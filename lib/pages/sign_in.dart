@@ -1,4 +1,9 @@
+import 'package:basvuru_app/models/users.dart';
+import 'package:basvuru_app/services/authenticationservice.dart';
+import 'package:basvuru_app/services/firestoreservice.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 class Signin extends StatefulWidget {
   @override
@@ -100,9 +105,7 @@ class _SigninState extends State<Signin> {
                     Container(
                       width: double.infinity, // yatay eksende sonsuzluk
                       child: FlatButton(
-                        onPressed: () {
-                          print("Bilgi Tıklandı");
-                        },
+                        onPressed: _kullaniciOlustur,
                         child: Text(
                           "Hesap Oluştur",
                           style: TextStyle(
@@ -120,5 +123,49 @@ class _SigninState extends State<Signin> {
         ],
       ),
     );
+  }
+
+  void _kullaniciOlustur() async {
+    final _yetkilendirmeServisi =
+        Provider.of<AuthServices>(context, listen: false);
+
+    var _formState = _formAnahtari.currentState;
+
+    if (_formState.validate()) {
+      _formState.save();
+      setState(() {
+        yukleniyor = true;
+      });
+
+      try {
+        Kullanici kullanici =
+            await _yetkilendirmeServisi.mailIleKayit(email, sifre);
+        if (kullanici != null) {
+          FireStoreService().kullaniciOlustur(
+              id: kullanici.id, email: email, kullaniciAdi: kullaniciAdi);
+        }
+        Navigator.pop(context);
+      } catch (hata) {
+        setState(() {
+          yukleniyor = false;
+        });
+        uyariGoster(hataKodu: hata.code);
+      }
+    }
+  }
+
+  uyariGoster({hataKodu}) {
+    String hataMesaji;
+
+    if (hataKodu == "invalid-email") {
+      hataMesaji = "Girdiğiniz mail adresi geçersizdir";
+    } else if (hataKodu == "email-already-in-use") {
+      hataMesaji = "Girdiğiniz mail kayıtlıdır";
+    } else if (hataKodu == "weak-password") {
+      hataMesaji = "Daha zor bir şifre tercih edin";
+    }
+
+    var snackBar = SnackBar(content: Text(hataMesaji));
+    _scaffoldAnahtari.currentState.showSnackBar(snackBar);
   }
 }

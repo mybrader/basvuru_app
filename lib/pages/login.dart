@@ -1,6 +1,8 @@
+import 'package:basvuru_app/services/authenticationservice.dart';
 import 'package:flutter/material.dart';
 import 'package:basvuru_app/pages/forget_password.dart';
 import 'package:basvuru_app/pages/sign_in.dart';
+import 'package:provider/provider.dart';
 
 class LoginPage extends StatefulWidget {
   @override
@@ -112,9 +114,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
               Expanded(
                 child: FlatButton(
-                  onPressed: () {
-                    print("Bilgi Tıklandı");
-                  },
+                  onPressed: _girisYap,
                   child: Text(
                     "Giriş Yap",
                     style: TextStyle(
@@ -142,5 +142,47 @@ class _LoginPageState extends State<LoginPage> {
         ],
       ),
     );
+  }
+
+  void _girisYap() async {
+    final _yetkilendirmeServisi =
+        Provider.of<AuthServices>(context, listen: false);
+
+    if (_formAnahtari.currentState.validate()) {
+      _formAnahtari.currentState.save();
+
+      setState(() {
+        yukleniyor = true;
+      });
+
+      try {
+        await _yetkilendirmeServisi.mailIleGiris(email, sifre);
+      } catch (hata) {
+        setState(() {
+          yukleniyor = false;
+        });
+
+        uyariGoster(hataKodu: hata.code);
+      }
+    }
+  }
+
+  uyariGoster({hataKodu}) {
+    String hataMesaji;
+
+    if (hataKodu == "user-not-found") {
+      hataMesaji = "Böyle bir kullanıcı bulunmuyor";
+    } else if (hataKodu == "invalid-email") {
+      hataMesaji = "Girdiğiniz mail adresi geçersizdir";
+    } else if (hataKodu == "wrong-password") {
+      hataMesaji = "Girilen şifre hatalı";
+    } else if (hataKodu == "user-disabled") {
+      hataMesaji = "Kullanıcı engellenmiş";
+    } else {
+      hataMesaji = "Tanımlanamayan bir hata oluştu $hataKodu";
+    }
+
+    var snackBar = SnackBar(content: Text(hataMesaji));
+    _scaffoldAnahtari.currentState.showSnackBar(snackBar);
   }
 }
